@@ -1,5 +1,5 @@
 ## salt-master
-```
+```bash
 $ cat /etc/salt/master | grep -v '^\s*$\|^\s*\#'
 engines:
   - junos_syslog:
@@ -9,7 +9,7 @@ file_roots:
     - /srv/salt
 ```
 
-```
+```bash
 $ tree /srv/
 /srv/
 ├── pillar
