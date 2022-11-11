@@ -32,7 +32,21 @@ $ curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com
 and then we deploy the software according to the architecture we have.
 In our case, please continue reading below for installation of the software per node.
 
-### salt-master node init
+## Salt Execution Modules and Functions
+
+Ad hoc commands are executed from the command line
+  - Target one or more minions
+  - Functions are executed on the minions and the result is returned to the master
+  - A module is a file containing executable code such as Python functions
+  - You reference the specific function using the *module_name.function_name* notation
+  - Complete list of modules: [Salt official modules list](https://docs.saltstack.com/en/latest/ref/modules/all/index.html)
+  - General command syntax:
+    - *salt [options] *<target>' <module>.<function> [arguments]* 
+  - The default-matching that Salt utilizes is shell-style globbing around the minion ID
+  - Example to ping all minions through event bus, not ICMP:
+    - *salt '*' test.ping*
+  
+### Initialization of salt-master node
 
 On master node we run the script as per below:
 
@@ -116,7 +130,7 @@ $ sudo salt-call -l debug state.apply
 $ sudo tail -f /var/log/salt/master
 ```
 
-### salt-minion1 node init
+### Initialization of salt-minion1 node
 On minion node we run the script as per below:
 
 ```bash
@@ -131,11 +145,13 @@ $ salt-minion --version
 salt-minion 3004.1
 ```
 
-Next we edit file "/etc/salt/minion" and we add an entry pointing to salt-master node IPv4 address:
+Next we edit file "/etc/salt/minion", we modify the "master:" parameter adding the IPv4 of the salt-master node and we restart the salt-minion process for the change to take effect:
 
 ```bash
-$ cat /etc/salt/minion | grep -v '^\s*$\|^\s*\#'
+$ cat /etc/salt/minion | grep -v ^master
 master: 10.254.0.200
+
+$ sudo service salt-minion restart
 ```
 
 Additionally, we do the same while editing "/etc/salt/proxy" file: 
@@ -161,7 +177,7 @@ $ sudo service salt-minion [start | stop | restart]
 $ sudo service salt-minin force-reload
 ```
 
-#### Start one salt-proxy process per Junos device we want to manage
+#### Start one salt-proxy process per Junos device to be managed
 
 ```bash
 $ sudo salt-proxy --proxyid=vmx-1 -d
