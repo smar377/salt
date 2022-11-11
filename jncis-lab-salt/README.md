@@ -1,3 +1,3 @@
 # JNCIS-DevOps Lab 2022 - Experimenting with Salt
 
-![lab](jncis-salt-lab-eve-ng.png)
+![jncis-salt-lab-eve-ng](jncis-salt-lab-eve-ng.png)
