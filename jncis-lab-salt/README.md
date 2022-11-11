@@ -8,7 +8,11 @@ It is a multi-vendor network emulation software that empowers network and securi
 2 x VMs
   - OS: Ubuntu 18.04.6 LTS
   - Processor: x2
-  - Memory: 8192 MB
+  - Memory: 4.0GB
+  - Interfaces:
+    - Master:
+      - Ethernet (ens3): 192.168.2.109/24 -> *Internet access*
+      - Ethernet (ens4): 10.254.0.200/24 -> *MGT access*
 
 2 x Juniper VMX Series routers
   - OS: Junos 18.2R1.9
