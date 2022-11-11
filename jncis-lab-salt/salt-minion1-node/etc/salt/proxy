@@ -1,0 +1,4 @@
+# Default file has 683 lines
+# We leave all all them commented out and add only the IP of the master node
+
+master: 10.254.0.200
