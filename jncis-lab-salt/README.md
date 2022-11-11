@@ -60,6 +60,7 @@ Version check:
 ```bash
 $ salt --version
 salt 3004.1
+
 $ salt-minion --version
 salt-minion 3004.1
 ```
