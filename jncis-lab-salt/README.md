@@ -1,4 +1,4 @@
-# salt-master
+## salt-master
 ```
 $ cat /etc/salt/master | grep -v '^\s*$\|^\s*\#'
 engines:
@@ -32,4 +32,4 @@ $ tree /srv/
     └── provision_l3vpn.sls
 ```
 
-# salt-minion1
+## salt-minion1
