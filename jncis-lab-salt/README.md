@@ -31,13 +31,17 @@ It is a multi-vendor network emulation software that empowers network and securi
    
 ## Junos Devices Preparation
 
-- Be sure to enable NETCONF: `# set system services netconf ssh`
 - Create SSH keys on salt-master and salt-minion1 and copy on vMX routers:
   - On Salt machines:
     - `$ ssh-keygen -b 2048 -t rsa`
-    - `$ scp /home/brook/.ssh/id_rsa.pub brook@10.254.0.41:/var/tmp
+    - `$ scp /home/brook/.ssh/id_rsa.pub brook@10.254.0.41:/var/tmp`
   - On vMX routers:
-    - 
+    - Be sure to enable NETCONF: `# set system services netconf ssh`
+    - Load the keys previously copied to `/var/tmp`: `# set system login user brook authentication load-key-file /var/tmp/id_rsa.pub`
+    - Delete the keys from `/var/tmp`: `# file delete /var/tmp/id_rsa.pub`
+
+Optionally if I want I can also disable authentication via SSH with password using:
+set system services ssh no-password-authentication
 
 ## Salt Execution Modules and Functions
 
