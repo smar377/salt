@@ -40,8 +40,8 @@ It is a multi-vendor network emulation software that empowers network and securi
     - Load the keys previously copied to `/var/tmp`: `# set system login user brook authentication load-key-file /var/tmp/id_rsa.pub`
     - Delete the keys from `/var/tmp`: `# file delete /var/tmp/id_rsa.pub`
 
-Optionally if I want I can also disable authentication via SSH with password using:
-set system services ssh no-password-authentication
+*(Not for our scenario) Optionally if we want we can also disable authentication via SSH with password using:
+`# set system services ssh no-password-authentication`*
 
 ## Salt Execution Modules and Functions
 
