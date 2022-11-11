@@ -8,26 +8,26 @@ It is a multi-vendor network emulation software that empowers network and securi
 2 x VMs
   - OS: Ubuntu 18.04.6 LTS
   - Processor: x2
-  - Memory: 4.0GB
+  - Memory: 4 GB
   - Interfaces:
-    - salt-master:
-      - Ethernet (ens3): 192.168.2.109/24 -> *Internet access*
-      - Ethernet (ens4): 10.254.0.200/24 -> *MGT access*
-    - salt-minion1:
-      - Ethernet (ens3): 192.168.2.108/24 -> *Internet access*
-      - Ethernet (ens4): 10.254.0.51/24 -> *MGT access*
+    - **salt-master**:
+      - `Ethernet (ens3): 192.168.2.109/24 -> *Internet access*`
+      - `Ethernet (ens4): 10.254.0.200/24 -> *MGT access*`
+    - **salt-minion1**:
+      - `Ethernet (ens3): 192.168.2.108/24 -> *Internet access*`
+      - `Ethernet (ens4): 10.254.0.51/24 -> *MGT access*`
 
 2 x Juniper VMX Series routers
   - OS: Junos 18.2R1.9
   - 1 x VM as virtual control-plane
   - 1 x VM as virtual forwarding-plane
   - Interfaces:
-    - vmx-1:
-      - fxp0.0: 10.254.0.41/24 -> *MGT access*
-      - ge-0/0/0.0: 10.0.0.111/24 -> *MPLS*
-    - vmx-2:
-      - fxp0.0: 10.254.0.42/24 -> *MGT access*
-      - ge-0/0/0.0: 10.0.0.222/24 -> *MPLS*
+    - **vmx-1**:
+      - `fxp0.0: 10.254.0.41/24 -> *MGT access*`
+      - `ge-0/0/0.0: 10.0.0.111/24 -> *MPLS*`
+    - **vmx-2**:
+      - `fxp0.0: 10.254.0.42/24 -> *MGT access*`
+      - `ge-0/0/0.0: 10.0.0.222/24 -> *MPLS*`
    
 ## Junos Devices Preparation
 
