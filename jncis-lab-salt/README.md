@@ -22,7 +22,15 @@ As a reminder Salt architecture supports 3 types of setup:
   - Salt agentless (also known as "salt-ssh", only requirements are SSH + Python deployed on to-be-managed system
   - Proxy minion (when salt-minion cannot be deployed, but NETCONF or REST API(s) is supported)
 
-With that being said, and since Junos devices support NETCONF and REST API(s), the proxy minion architecture is always used.
+With that being said, and since Junos devices support NETCONF, the proxy minion architecture is always used:
+  - Junos proxy minions use the Junos PyEZ library to connect through NETCONF and perform various management tasks
+    - NETCONF must be enabled on managed devices
+    - `Junos PyEZ & jxmlease` must be installed on the server running proxy minion  
+  - PyEZ facts are stored as Salt grains
+  - One proxy minion instance manages one Junos device
+  - Uses about 100 MB of RAM
+  - Can run on any server, including the same server as master
+
 Now, for the installation of Salt, a bootstrap script is used. Download using:
 
 ```bash 
