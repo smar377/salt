@@ -1,19 +1,22 @@
 ## Virtualization & tooling
+
 EVE-NG (Emulated Virtual Environment Next Generation) Community Edition v2.0.3-112 has been used for the needs of this lab.
 It is a multi-vendor network emulation software that empowers network and security professionals with huge opportunities in the networking world ([eve-ng.net](https://www.eve-ng.net/))
 
 ## Inventory
+
 2 x VMs
   - OS: Ubuntu 18.04.6 LTS
   - Processor: x2
   - Memory: 8192 MB
 
-2 x Juniper VMX Series
+2 x Juniper VMX Series routers
   - OS: Junos 18.2R1.9
   - 1 x VM as virtual control-plane
   - 1 x VM as virtual forwarding-plane
 
-## Salt architecture init
+## Salt architecture for Junos devices
+
 As a reminder Salt architecture supports 3 types of setup:
   - Masterless
   - Salt agentless (also known as "salt-ssh", only requirements are SSH + Python deployed on to-be-managed system
@@ -29,7 +32,8 @@ $ curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com
 and then we deploy the software according to the architecture we have.
 In our case, please continue reading below for installation of the software per node.
 
-### salt-master
+### salt-master node init
+
 On master node we run the script as per below:
 
 ```bash
@@ -58,6 +62,13 @@ file_roots:
     - /srv/salt
 ```
 
+We also edit "/etc/salt/minion_id" and add the DNS A record of the salt-master node:
+
+```bash
+$ cat /etc/salt/minion_id 
+master.edu.example.com
+```
+
 Then, in order to define the Junos devices the salt-master will talk to we specify 2 SLS (Salt State) files as per below, under "/srv/pillar" directory:
 
 ```bash
@@ -78,30 +89,34 @@ proxy:
   port: 830
 ```
 
+We add also "/srv/pillar/top.sls" file as per below to map "vmx-1" and "vmx-2" tags to "proxy-1" and "proxy-2" respectively:
+
 ```bash
-$ tree /srv/
-/srv/
-├── pillar
-│   ├── infrastructure_data.sls
-│   ├── l3vpn
-│   │   ├── customers.sls
-│   │   ├── vmx-1.sls
-│   │   └── vmx-2.sls
-│   ├── proxy-1.sls
-│   ├── proxy-2.sls
-│   └── top.sls
-└── salt
-    ├── enable_syslog.set
-    ├── infrastructure_config.conf
-    ├── l3vpn.conf
-    ├── _modules
-    │   └── dayonejunos.py
-    ├── myconfig.set
-    ├── provision_infrastructure.sls
-    └── provision_l3vpn.sls
+$ cat /srv/pilar/top.sls
+base:
+  'vmx-1':
+    - proxy-1
+  'vmx-2':
+    - proxy-2
 ```
 
-### salt-minion1
+#### Check salt-master service status
+
+In order to check the health of the service we can leverage the following commands:
+```bash
+$ sudo service salt-master status
+$ sudo service salt-master [start | stop | restart]
+$ sudo service salt-master force-reload
+```
+
+#### Troubleshooting salt-master
+
+```bash
+$ sudo salt-call -l debug state.apply
+$ sudo tail -f /var/log/salt/master
+```
+
+### salt-minion1 node init
 On minion node we run the script as per below:
 
 ```bash
@@ -137,23 +152,104 @@ $ cat /etc/salt/minion_id
 minion1.edu.example.com
 ```
 
-#### Check service/process status
+#### Check salt-minion service status
 
 In order to check the health of the service we can leverage the following commands:
 ```bash
 $ sudo service salt-minion status
 $ sudo service salt-minion [start | stop | restart]
+$ sudo service salt-minin force-reload
 ```
 
 #### Start one salt-proxy process per Junos device we want to manage
+
 ```bash
 $ sudo salt-proxy --proxyid=vmx-1 -d
 $ sudo salt-proxy --proxyid=vmx-2 -d
 ```
 
-#### Troubleshooting
+#### Troubleshooting salt-minion
+
 ```bash
 $ sudo salt-call -l debug state.apply
 $ sudo tail -f /var/log/salt/minion
 $ sudo tail -f /var/log/salt/proxy
+```
+
+## Verify that vMX routers and salt-minion proxy processes have joined the salt-master
+
+On master node:
+
+```bash
+# List all accepted public keys from the managed devices
+$ sudo salt-key -L
+Accepted Keys:
+minion1.edu.example.com
+vmx-1
+vmx-2
+Denied Keys:
+Unaccepted Keys:
+Rejected Keys:
+```
+
+During the first time, the public keys of the managed systems will be detected from salt-master, but not accepted.
+In order to accept all pending keys we need to run:
+
+```bash
+# In contrast, we can delete all keys by adding "-D" key instead of "-A"
+$ sudo salt-key -A
+```
+
+## Check basic connectivity between vMX routers and salt-master
+
+```bash
+$ sudo salt vmx* test.ping
+vmx-1:
+    True
+vmx-2:
+    True
+```
+
+## Check interfaces of vMX routers
+
+```bash
+$ sudo salt vmx* junos.cli "show interfaces ge-0/0/2 terse" 
+vmx-1:
+    ----------
+    message:
+        
+        Interface               Admin Link Proto    Local                 Remote
+        ge-0/0/2                up    up
+        ge-0/0/2.32767          up    up   multiservice
+    out:
+        True
+vmx-2:
+    ----------
+    message:
+        
+        Interface               Admin Link Proto    Local                 Remote
+        ge-0/0/2                up    up
+        ge-0/0/2.32767          up    up   multiservice
+    out:
+        True
+```
+
+```bash
+$ sudo salt vmx* junos.cli "show interfaces fxp0.0 terse"
+vmx-2:
+    ----------
+    message:
+        
+        Interface               Admin Link Proto    Local                 Remote
+        fxp0.0                  up    up   inet     10.254.0.42/24  
+    out:
+        True
+vmx-1:
+    ----------
+    message:
+        
+        Interface               Admin Link Proto    Local                 Remote
+        fxp0.0                  up    up   inet     10.254.0.41/24  
+    out:
+        True
 ```
