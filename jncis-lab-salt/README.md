@@ -24,13 +24,20 @@ It is a multi-vendor network emulation software that empowers network and securi
   - Interfaces:
     - vmx-1:
       - fxp0.0: 10.254.0.41/24 -> *MGT access*
+      - ge-0/0/0.0: 10.0.0.111/24 -> *MPLS*
     - vmx-2:
       - fxp0.0: 10.254.0.42/24 -> *MGT access*
+      - ge-0/0/0.0: 10.0.0.222/24 -> *MPLS*
    
 ## Junos Devices Preparation
 
 - Be sure to enable NETCONF: `# set system services netconf ssh`
-- 
+- Create SSH keys on salt-master and salt-minion1 and copy on vMX routers:
+  - On Salt machines:
+    - `$ ssh-keygen -b 2048 -t rsa`
+    - `$ scp /home/brook/.ssh/id_rsa.pub brook@10.254.0.41:/var/tmp
+  - On vMX routers:
+    - 
 
 ## Salt Execution Modules and Functions
 
@@ -249,7 +256,7 @@ In order to accept all pending keys we need to run:
 $ sudo salt-key -A
 ```
 
-## Check basic connectivity between vMX routers and salt-master
+## Check connectivity between vMX routers and salt-master
 
 ```bash
 $ sudo salt vmx* test.ping
@@ -259,17 +266,19 @@ vmx-2:
     True
 ```
 
-## Check interfaces of vMX routers
+## Check vMX interfaces
 
 ```bash
-$ sudo salt vmx* junos.cli "show interfaces ge-0/0/2 terse" 
+sudo salt vmx* junos.cli "show interfaces terse ge-0/0/0"
 vmx-1:
     ----------
     message:
         
         Interface               Admin Link Proto    Local                 Remote
-        ge-0/0/2                up    up
-        ge-0/0/2.32767          up    up   multiservice
+        ge-0/0/0                up    up
+        ge-0/0/0.0              up    up   inet     10.0.0.111/24   
+                                           mpls    
+                                           multiservice
     out:
         True
 vmx-2:
@@ -277,8 +286,10 @@ vmx-2:
     message:
         
         Interface               Admin Link Proto    Local                 Remote
-        ge-0/0/2                up    up
-        ge-0/0/2.32767          up    up   multiservice
+        ge-0/0/0                up    up
+        ge-0/0/0.0              up    up   inet     10.0.0.222/24   
+                                           mpls    
+                                           multiservice
     out:
         True
 ```
@@ -301,4 +312,10 @@ vmx-1:
         fxp0.0                  up    up   inet     10.254.0.41/24  
     out:
         True
+```
+
+## Other useful Salt commands leveraging various Junos PyEZ modules
+
+```bash
+$ sudo salt vmx* junos.rpc get-interface-information interface-name=ge-0/0/0 terse=True --out=json
 ```
