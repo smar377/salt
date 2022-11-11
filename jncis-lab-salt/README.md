@@ -1,4 +1,4 @@
-## Virtualization & tooling
+## Virtualization & Tooling
 
 EVE-NG (Emulated Virtual Environment Next Generation) Community Edition v2.0.3-112 has been used for the needs of this lab.
 It is a multi-vendor network emulation software that empowers network and security professionals with huge opportunities in the networking world ([eve-ng.net](https://www.eve-ng.net/))
@@ -15,7 +15,7 @@ It is a multi-vendor network emulation software that empowers network and securi
   - 1 x VM as virtual control-plane
   - 1 x VM as virtual forwarding-plane
 
-## Salt architecture for Junos devices
+## Salt Architecture for Junos
 
 As a reminder Salt architecture supports 3 types of setup:
   - Masterless
@@ -84,7 +84,18 @@ $ cat /etc/salt/minion_id
 master.edu.example.com
 ```
 
-Then, in order to define the Junos devices the salt-master will talk to we specify 2 SLS (Salt State) files as per below, under "/srv/pillar" directory:
+We add also "/srv/pillar/top.sls" file, which defines which minions have access to which Pillar data (*proxy-1 and "proxy-2"*):
+
+```bash
+$ cat /srv/pilar/top.sls
+base:
+  'vmx-1':
+    - proxy-1
+  'vmx-2':
+    - proxy-2
+```
+
+Then, for above to work we need to define the various data associated with the minions. We do this by leveraging the Salt Pillar system. For the 2 vMX Junos devices we specify 2 SLS (Salt State) files as per below, under "/srv/pillar" directory:
 
 ```bash
 $ cat /srv/pillar/proxy-1.sls
@@ -102,17 +113,9 @@ proxy:
   username: brook
   password: onepiece123
   port: 830
-```
-
-We add also "/srv/pillar/top.sls" file as per below to map "vmx-1" and "vmx-2" tags to "proxy-1" and "proxy-2" respectively:
-
-```bash
-$ cat /srv/pilar/top.sls
-base:
-  'vmx-1':
-    - proxy-1
-  'vmx-2':
-    - proxy-2
+  
+# Last but not least we need to refresh the pillar data for any changes to take effect
+$ sudo salt 'vmx-*' saltutil.refresh_pillar
 ```
 
 #### Check salt-master service status
