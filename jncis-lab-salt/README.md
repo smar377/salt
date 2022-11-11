@@ -41,10 +41,10 @@ Ad hoc commands are executed from the command line
   - You reference the specific function using the *module_name.function_name* notation
   - Complete list of modules: [Salt official modules list](https://docs.saltstack.com/en/latest/ref/modules/all/index.html)
   - General command syntax:
-    - *salt [options] *<target>' <module>.<function> [arguments]* 
+    - ***salt [options] <target>' <module>.<function> [arguments]*** 
   - The default-matching that Salt utilizes is shell-style globbing around the minion ID
   - Example to ping all minions through event bus, not ICMP:
-    - *salt '*' test.ping*
+    - ***salt '*' test.ping***
   
 ### Initialization of salt-master node
 
