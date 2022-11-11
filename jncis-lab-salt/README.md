@@ -14,7 +14,39 @@ It is a multi-vendor network emulation software that empowers network and securi
   - 1 x VM as virtual forwarding-plane
 
 ## Salt architecture init
+As a reminder Salt architecture supports 3 types of setup:
+  - Masterless
+  - Salt agentless (also known as "salt-ssh", only requirements are SSH + Python deployed on to-be-managed system
+  - Proxy minion (when salt-minion cannot be deployed, but NETCONF or REST API(s) is supported)
+
+With that being said, and since Junos devices support NETCONF and REST API(s), the proxy minion architecture is always used.
+Now, for the installation of Salt, a bootstrap script is used. Download using:
+
+```bash 
+$ curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com
+```
+
+and then we deploy the software according to the architecture we have.
+In our case, please continue reading below for installation of the software per node.
+
 ### salt-master
+On master node we run the script as per below:
+
+```bash
+# Because -M key was provided, both master and minion processes were installed
+$ sudo sh bootstrap-salt.sh -M
+```
+
+Version check:
+
+```bash
+$ salt --version
+salt 3004.1
+$ salt-minion --version
+salt-minion 3004.1
+```
+
+In "/etc/salt/master" we add the following lines:
 
 ```bash
 $ cat /etc/salt/master | grep -v '^\s*$\|^\s*\#'
@@ -24,6 +56,26 @@ engines:
 file_roots:
   base:
     - /srv/salt
+```
+
+Then, in order to define the Junos devices the salt-master will talk to we specify 2 SLS (Salt State) files as per below, under "/srv/pillar" directory:
+
+```bash
+$ cat /srv/pillar/proxy-1.sls
+proxy:
+  proxytype: junos
+  host: 10.254.0.41
+  username: brook
+  password: onepiece123
+  port: 830
+
+$ cat /srv/pillar/proxy-2.sls
+proxy:
+  proxytype: junos
+  host: 10.254.0.42
+  username: brook
+  password: onepiece123
+  port: 830
 ```
 
 ```bash
@@ -50,24 +102,58 @@ $ tree /srv/
 ```
 
 ### salt-minion1
+On minion node we run the script as per below:
 
 ```bash
-$ $ cat /etc/salt/minion | grep -v '^\s*$\|^\s*\#'
+# We do not specify the -M key as we want only the minion processes to be installed
+$ sudo sh bootstrap-salt.sh
+```
+
+Version check:
+
+```bash
+$ salt-minion --version
+salt-minion 3004.1
+```
+
+Next we edit file "/etc/salt/minion" and we add an entry pointing to salt-master node IPv4 address:
+
+```bash
+$ cat /etc/salt/minion | grep -v '^\s*$\|^\s*\#'
 master: 10.254.0.200
+```
 
-$ cat /etc/salt/minion_id 
-minion1.edu.example.com
+Additionally, we do the same while editing "/etc/salt/proxy" file: 
 
+```bash
 $ cat /etc/salt/proxy | grep -v '^\s*$\|^\s*\#'
 master: 10.254.0.200
+```
 
-sudo service salt-minion status
-sudo service salt-minion restart
-sudo salt-proxy --proxyid=vmx-1 -d
-sudo salt-proxy --proxyid=vmx-2 -d
-sudo salt-call -l debug state.apply
-sudo tail -f /var/log/salt/minion
-sudo tail -f /var/log/salt/proxy
+We also edit "/etc/salt/minion_id" and add the DNS A record of the salt-minion node:
 
-ps aux | grep salt-proxy
+```bash
+$ cat /etc/salt/minion_id 
+minion1.edu.example.com
+```
+
+#### Check service/process status
+
+In order to check the health of the service we can leverage the following commands:
+```bash
+$ sudo service salt-minion status
+$ sudo service salt-minion [start | stop | restart]
+```
+
+#### Start one salt-proxy process per Junos device we want to manage
+```bash
+$ sudo salt-proxy --proxyid=vmx-1 -d
+$ sudo salt-proxy --proxyid=vmx-2 -d
+```
+
+#### Troubleshooting
+```bash
+$ sudo salt-call -l debug state.apply
+$ sudo tail -f /var/log/salt/minion
+$ sudo tail -f /var/log/salt/proxy
 ```
