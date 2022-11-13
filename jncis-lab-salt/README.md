@@ -113,14 +113,14 @@ file_roots:
     - /srv/salt
 ```
 
-We also edit "/etc/salt/minion_id" and add the DNS A record of the salt-master node:
+We also edit `/etc/salt/minion_id` and add the DNS A record of the salt-master node:
 
 ```bash
 $ cat /etc/salt/minion_id 
 master.edu.example.com
 ```
 
-We add also "/srv/pillar/top.sls" file, which defines which minions have access to which Pillar data (*proxy-1 and "proxy-2"*):
+We add also `/srv/pillar/top.sls` file, which defines which minions have access to which Pillar data (*proxy-1 and "proxy-2"*):
 
 ```bash
 $ cat /srv/pilar/top.sls
@@ -173,6 +173,7 @@ $ sudo tail -f /var/log/salt/master
 ### Initialization of salt-minion1 node
 
 Steps to be followed:
+
 1. Tell the proxy minion where the master is
 2. Start proxy minions
 3. Accept the keys (on `salt-master` in our case)
@@ -203,7 +204,7 @@ master: 10.254.0.200
 $ sudo service salt-minion restart
 ```
 
-We also edit "/etc/salt/minion_id" and add the DNS A record of the salt-minion node:
+We also edit `/etc/salt/minion_id` and add the DNS A record of the salt-minion node:
 
 ```bash
 $ cat /etc/salt/minion_id 
