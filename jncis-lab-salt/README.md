@@ -331,7 +331,7 @@ $ sudo salt vmx* junos.rpc get-interface-information interface-name=ge-0/0/0 ter
   - DNS servers: 192.168.0.253, 192.168.0.254
   - NTP servers: 192.168.0.250, 192.168.0.251
   - Interfaces: 
-    - On **vmx-1**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.222/24 and 10.0.9.222/24
+    - On **vmx-1**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.111/24 and 10.0.9.111/24
     - On **vmx-2**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.222/24 and 10.0.9.222/24  
 
 Steps to be going through:
