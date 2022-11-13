@@ -324,3 +324,23 @@ vmx-1:
 ```bash
 $ sudo salt vmx* junos.rpc get-interface-information interface-name=ge-0/0/0 terse=True --out=json
 ```
+
+## Case Study #1
+
+- Configure DNS, NTP server parameters and two testing physical interface on two vMX devices:
+  - DNS servers: 192.168.0.253, 192.168.0.254
+  - NTP servers: 192.168.0.250, 192.168.0.251
+  - Interfaces: 
+    - On **vmx-1**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.222/24 and 10.0.9.222/24
+    - On **vmx-2**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.222/24 and 10.0.9.222/24  
+
+Steps to be going through:
+
+1. Define pillar data
+2. Update pillar top file and refresh
+3. Define template configuration
+4. Define state SLS files
+5. Apply the state
+6. Check on the devices
+
+
