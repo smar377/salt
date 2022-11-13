@@ -323,6 +323,17 @@ vmx-1:
 
 ```bash
 $ sudo salt vmx* junos.rpc get-interface-information interface-name=ge-0/0/0 terse=True --out=json
+$ sudo salt vmx* junos.ping "10.254.0.1" count=2
+$ sudo salt vmx* junos.facts
+$ sudo salt vmx* junos.lock
+$ sudo salt vmx* junos.load 'salt://myconfig.set' replace='True'
+$ sudo salt vmx* junos.diff
+$ sudo salt vmx* junos.commit
+$ sudo salt vmx* junos.commit_check
+$ sudo salt vmx* junos.unlock
+$ sudo salt vmx* junos.install_config 'salt://myconfig.set'
+$ sudo salt vmx* junos.file_copy /home/eve/hello.slax /var/db/scripts/op
+$ sudo salt vmx* junos.install_os salt:///junos-openconfig-x86-32-0.0.0.9.tgz
 ```
 
 ## Case Study #1
