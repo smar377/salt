@@ -101,7 +101,7 @@ $ salt-minion --version
 salt-minion 3004.1
 ```
 
-In "/etc/salt/master" we add the following lines:
+In `/etc/salt/master` we add the following lines:
 
 ```bash
 $ cat /etc/salt/master | grep -v '^\s*$\|^\s*\#'
