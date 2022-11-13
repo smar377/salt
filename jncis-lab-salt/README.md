@@ -274,7 +274,7 @@ vmx-2:
 ## Check vMX interfaces
 
 ```bash
-sudo salt vmx* junos.cli "show interfaces terse ge-0/0/0"
+$ sudo salt vmx* junos.cli "show interfaces terse ge-0/0/0"
 vmx-1:
     ----------
     message:
