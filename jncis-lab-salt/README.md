@@ -345,13 +345,395 @@ $ sudo salt vmx* junos.install_os salt:///junos-openconfig-x86-32-0.0.0.9.tgz
     - On **vmx-1**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.111/24 and 10.0.9.111/24
     - On **vmx-2**: `ge-0/0/8` and `ge-0/0/9` with 10.0.8.222/24 and 10.0.9.222/24  
 
-Steps to be going through:
+- Steps to be going through:
 
-1. Define pillar data
-2. Update pillar top file and refresh
-3. Define template configuration
-4. Define state SLS files
-5. Apply the state
-6. Check on the devices
+### 1. Define pillar data
 
+```bash
+$ cat /srv/pillar/infra_data.sls 
+ntp_servers:
+ - 192.168.0.250
+ - 192.168.0.251
+dns_servers:
+ - 192.168.0.253
+ - 192.168.0.254
+```
 
+```bash
+$ cat /srv/pillar/interfaces-vmx1.sls 
+interfaces:
+ - name: ge-0/0/8
+   unit: 0
+   address: 10.0.8.111/24
+ - name: ge-0/0/9
+   unit: 0
+   address: 10.0.9.111/24
+    
+$ cat /srv/pillar/interfaces-vmx2.sls 
+interfaces:
+ - name: ge-0/0/8
+   unit: 0
+   address: 10.0.8.222/24
+ - name: ge-0/0/9
+   unit: 0
+   address: 10.0.9.222/24
+```
+
+### 2. Update pillar top file and refresh
+
+```
+$ cat /srv/pillar/top.sls 
+base:
+  'vmx-1':
+    - proxy-1
+    - interfaces-vmx1
+  'vmx-2':
+    - proxy-2
+    - interfaces-vmx2
+  'vmx*':
+    - infra_data
+```
+
+```bash
+$ sudo salt 'vmx*' saltutil.refresh_pillar
+vmx-1:
+    True
+vmx-2:
+    True
+```
+
+### 3. Define template configuration
+
+```bash
+$ cat /srv/salt/configs/infra_config.conf 
+system {
+  replace: name-server {
+{%- for dns_server in pillar.dns_servers %}
+  {{ dns_server }};
+{%- endfor %}
+  }
+  replace: ntp {
+{%- for ntp_server in pillar.ntp_servers %}
+    server {{ ntp_server }};
+{%- endfor %}
+  }
+}
+```
+
+```bash
+$ cat /srv/salt/configs/interfaces.conf 
+interfaces {
+{%- for iface in pillar.interfaces %}
+    {{ iface.name }} {
+        unit {{ iface.unit }} {
+            family inet {
+                address {{ iface.address }};
+            }
+        }
+    }
+{%- endfor %}
+}
+```
+
+### 4. Define state SLS files
+
+```bash
+$ cat /srv/salt/provision_infra.sls 
+Install the infrastructure services config:
+  junos.install_config:
+   - name: salt:///configs/infra_config.conf
+   - diffs_file: /home/eve/infra_data.{{grains.id}}.diff
+   - replace: True
+   - timeout: 100
+```
+
+```bash
+$ cat /srv/salt/provision_interfaces.sls 
+Provision interface configs:
+  junos.install_config:
+   - name: salt:///configs/interfaces.conf
+   - diffs_file: /home/eve/interfaces-{{grains.id}}.diff
+```
+
+### 5. Apply the state
+
+```bash
+$ sudo salt 'vmx*'' state.apply provision_infra
+vmx-2:
+----------
+          ID: Install the infrastructure services config
+    Function: junos.install_config
+        Name: salt:///configs/infra_config.conf
+      Result: True
+     Comment: 
+     Started: 10:49:37.037028
+    Duration: 1528.968 ms
+     Changes:   
+              ----------
+              message:
+                  Successfully loaded and committed!
+              out:
+                  True
+
+Summary for vmx-2
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time:   1.529 s
+vmx-1:
+----------
+          ID: Install the infrastructure services config
+    Function: junos.install_config
+        Name: salt:///configs/infra_config.conf
+      Result: True
+     Comment: 
+     Started: 10:49:37.059113
+    Duration: 1510.228 ms
+     Changes:   
+              ----------
+              message:
+                  Successfully loaded and committed!
+              out:
+                  True
+
+Summary for vmx-1
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time:   1.510 s
+```
+
+```bash
+$ sudo salt vmx* state.apply provision_interfaces
+vmx-1:
+----------
+          ID: Provision interface configs
+    Function: junos.install_config
+        Name: salt:///configs/interfaces.conf
+      Result: True
+     Comment: 
+     Started: 11:12:59.672869
+    Duration: 2143.031 ms
+     Changes:   
+              ----------
+              message:
+                  Successfully loaded and committed!
+              out:
+                  True
+
+Summary for vmx-1
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time:   2.143 s
+vmx-2:
+----------
+          ID: Provision interface configs
+    Function: junos.install_config
+        Name: salt:///configs/interfaces.conf
+      Result: True
+     Comment: 
+     Started: 11:12:59.691501
+    Duration: 2168.813 ms
+     Changes:   
+              ----------
+              message:
+                  Successfully loaded and committed!
+              out:
+                  True
+
+Summary for vmx-2
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time:   2.169 s
+```
+
+### 6. Check on the devices
+
+```bash
+$ sudo salt vmx* junos.cli "show configuration | compare rollback 1"
+vmx-2:
+    ----------
+    message:
+        
+        [edit system]
+        +  name-server {
+        +      192.168.0.253;
+        +      192.168.0.254;
+        +  }
+        [edit system ntp]
+        +    server 192.168.0.250;
+        +    server 192.168.0.251;
+    out:
+        True
+vmx-1:
+    ----------
+    message:
+        
+        [edit system]
+        +  name-server {
+        +      192.168.0.253;
+        +      192.168.0.254;
+        +  }
+        [edit system ntp]
+        +    server 192.168.0.250;
+        +    server 192.168.0.251;
+    out:
+        True
+```
+
+```bash
+# On salt-minion1 VM we check the .diff files
+$ cat infra_data.vmx-1.diff 
+
+[edit system]
++  name-server {
++      192.168.0.253;
++      192.168.0.254;
++  }
+[edit system ntp]
++    server 192.168.0.250;
++    server 192.168.0.251;
+
+$ cat infra_data.vmx-2.diff 
+
+[edit system]
++  name-server {
++      192.168.0.253;
++      192.168.0.254;
++  }
+[edit system ntp]
++    server 192.168.0.250;
++    server 192.168.0.251;
+```
+
+```bash
+$ sudo salt vmx* junos.cli "show configuration | compare rollback 1"
+vmx-2:
+    ----------
+    message:
+        
+        [edit interfaces]
+        +   ge-0/0/8 {
+        +       unit 0 {
+        +           family inet {
+        +               address 10.0.8.222/24;
+        +           }
+        +       }
+        +   }
+        +   ge-0/0/9 {
+        +       unit 0 {
+        +           family inet {
+        +               address 10.0.9.222/24;
+        +           }
+        +       }
+        +   }
+    out:
+        True
+vmx-1:
+    ----------
+    message:
+        
+        [edit interfaces]
+        +   ge-0/0/8 {
+        +       unit 0 {
+        +           family inet {
+        +               address 10.0.8.111/24;
+        +           }
+        +       }
+        +   }
+        +   ge-0/0/9 {
+        +       unit 0 {
+        +           family inet {
+        +               address 10.0.9.111/24;
+        +           }
+        +       }
+        +   }
+    out:
+        True
+```
+
+```bash
+# On salt-minion1 VM we check the .diff files
+$ cat interfaces-vmx-1.diff 
+
+[edit interfaces]
++   ge-0/0/8 {
++       unit 0 {
++           family inet {
++               address 10.0.8.111/24;
++           }
++       }
++   }
++   ge-0/0/9 {
++       unit 0 {
++           family inet {
++               address 10.0.9.111/24;
++           }
++       }
++   }
+
+$ cat interfaces-vmx-2.diff 
+
+[edit interfaces]
++   ge-0/0/8 {
++       unit 0 {
++           family inet {
++               address 10.0.8.222/24;
++           }
++       }
++   }
++   ge-0/0/9 {
++       unit 0 {
++           family inet {
++               address 10.0.9.222/24;
++           }
++       }
++   }
+```
+
+## Case Study #2
+
+We assume there is a set of provider edge (PE) routers and each PE router generally has multiple connected L3VPN customers. The goal is to provision the corresponding configuration automatically using Salt. The example topology used is depicted in `topology.md` file.
+
+There is two vMX devices acting, this time, as MPLS PE routers. The Salt master server, as well as minion1 server running the two Junos proxy minions, are not shown. Consult previous chapters for details on how to set up Salt for managing Junos
+devices.
+
+In this example, the IP/MPLS backbone is contained of `ge-0/0/0` and `ge-0/0/1` links connecting vMX-1 and vMX-2 back-to-back. It is pre-configured and not managed by Salt.
+
+More specifically, the initial configuration on PE vMX devices includes:
+
+- Full configuration of core-facing interfaces (family inet and MPLS);
+- Standard OSPF, LDP, and IBGP (with family inet-vpn unicast) configuration for the IP/MPLS backbone;
+- Only physical parameters for customer-facing interfaces (ge-0/0/2) are configured – namely, flexible-vlan-tagging and encapsulation flexible-ethernet-services are configured. No units are configured on these interfaces – Salt must do that;
+- No VRF (L3VPN) instances are configured for the customers – again, Salt must do that;
+- The route-distinguisher-id is configured in routing-options hierarchy on both PEs, so manual configuration for route-distinguisher in VRFs is not needed.
+
+Edge customer-facing logical interfaces and L3VPN VRF instances must be provisioned automatically using Salt, according to the Jinja templates and data specified in pillar YAML files.
+
+As part of the solution, the following must be created or updated in Salt:
+- A Jinja configuration template.
+- Pillar YAML files with variable parameters, describing customers connected to each of the PE devices.
+- A pillar top file to properly map pillar data to proxy minions.
+- A State SLS file to provision configurations.
+
+### 1. Define pillar data
+
+### 2. Update pillar top file and refresh
+
+### 3. Define template configuration
+
+### 4. Define state SLS files
+
+### 5. Apply the state
+
+### 6. Check on the devices
