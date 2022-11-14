@@ -557,6 +557,58 @@ Total states run:     1
 Total run time:   2.169 s
 ```
 
+*Important:* In case we try to apply the same state again we will see that Salt detects that **NO** change on the devices is needed, and does **NOT** perform a commit. Salt will try to configure the state again, only when a change has happened on the data given:
+
+```bash
+$ sudo salt vmx* state.apply provision_interfaces
+vmx-2:
+----------
+          ID: Provision interface configs
+    Function: junos.install_config
+        Name: salt:///configs/interfaces.conf
+      Result: True
+     Comment: 
+     Started: 11:25:45.030674
+    Duration: 394.726 ms
+     Changes:   
+              ----------
+              message:
+                  Configuration already applied!
+              out:
+                  True
+
+Summary for vmx-2
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time: 394.726 ms
+vmx-1:
+----------
+          ID: Provision interface configs
+    Function: junos.install_config
+        Name: salt:///configs/interfaces.conf
+      Result: True
+     Comment: 
+     Started: 11:25:45.087260
+    Duration: 449.76 ms
+     Changes:   
+              ----------
+              message:
+                  Configuration already applied!
+              out:
+                  True
+
+Summary for vmx-1
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time: 449.760 ms
+```
+
 ### 6. Check on the devices
 
 ```bash
@@ -1238,6 +1290,60 @@ $ cat /home/eve/l3vpn-vmx-2.diff
 +     }
 + }
 + apply-groups L3VPN-SALT;
+```
+
+
+*Important:* In case we try to apply the same state again we will see that Salt detects that **NO** change on the devices is needed, and does **NOT** perform a commit. Salt will try to configure the state again, only when a change has happened on the data given:
+
+```bash
+$ sudo salt vmx* state.apply provision_l3vpn
+[sudo] password for eve: 
+vmx-2:
+----------
+          ID: Install L3 VPN config
+    Function: junos.install_config
+        Name: salt:///configs/l3vpn.conf
+      Result: True
+     Comment: 
+     Started: 13:53:55.209873
+    Duration: 470.971 ms
+     Changes:   
+              ----------
+              message:
+                  Configuration already applied!
+              out:
+                  True
+
+Summary for vmx-2
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time: 470.971 ms
+vmx-1:
+----------
+          ID: Install L3 VPN config
+    Function: junos.install_config
+        Name: salt:///configs/l3vpn.conf
+      Result: True
+     Comment: 
+     Started: 13:53:55.261932
+    Duration: 422.995 ms
+     Changes:   
+              ----------
+              message:
+                  Configuration already applied!
+              out:
+                  True
+
+Summary for vmx-1
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time: 422.995 ms
 ```
 
 ### Test routing table and connectivity
