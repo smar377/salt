@@ -1,3 +1,8 @@
+## Intro
+
+This lab was developed while studying ["DAY ONE: AUTOMATING JUNOS
+WITH SALT" by Juniper Networks](https://www.juniper.net/documentation/en_US/day-one-books/DO_Automating_SALT.pdf)
+
 ## Virtualization & Tooling
 
 EVE-NG (Emulated Virtual Environment Next Generation) Community Edition v2.0.3-112 has been used for the needs of this lab.
