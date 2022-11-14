@@ -728,12 +728,543 @@ As part of the solution, the following must be created or updated in Salt:
 
 ### 1. Define pillar data
 
+```bash
+$ tree /srv/pillar/l3vpn/
+/srv/pillar/l3vpn/
+├── customers.sls
+├── vmx-1.sls
+└── vmx-2.sls
+
+0 directories, 3 files
+```
+
+```bash
+$ cat /srv/pillar/l3vpn/customers.sls 
+---
+customers:
+  Cust_A:
+    vrf_target: "target:65000:1"
+    AS: 65100
+  Cust_B:
+    vrf_target: "target:65000:2"
+    AS: 65200
+```
+
+```bash
+$ cat /srv/pillar/l3vpn/vmx-1.sls 
+L3VPN_data:
+  - customer_id: Cust_A
+    interface_name: ge-0/0/2
+    unit: 100
+    vlan_id: 100
+    ip_mask: 10.100.0.1/24
+    customer_ip: 10.100.0.2
+    prefix_limit: 10
+  - customer_id: Cust_B
+    interface_name: ge-0/0/2
+    unit: 200
+    vlan_id: 200
+    ip_mask: 10.200.0.1/24
+    customer_ip: 10.200.0.2
+    prefix_limit: 15
+```
+
+```bash
+$ cat /srv/pillar/l3vpn/vmx-2.sls 
+L3VPN_data:
+  - customer_id: Cust_A
+    interface_name: ge-0/0/2
+    unit: 150
+    vlan_id: 150
+    ip_mask: 10.150.0.1/24
+    customer_ip: 10.150.0.2
+    prefix_limit: 10
+  - customer_id: Cust_B
+    interface_name: ge-0/0/2
+    unit: 250
+    vlan_id: 250
+    ip_mask: 10.250.0.1/24
+    customer_ip: 10.250.0.2
+    prefix_limit: 15
+```
+
 ### 2. Update pillar top file and refresh
+
+```bash
+$ cat /srv/pillar/top.sls 
+base:
+  'vmx-1':
+    - proxy-1
+    - interfaces-vmx1
+    - l3vpn/vmx-1
+  'vmx-2':
+    - proxy-2
+    - interfaces-vmx2
+    - l3vpn/vmx-2
+  'vmx*':
+    - infra_data
+    - l3vpn/customers
+```
+
+```bash
+$ sudo salt vmx* saltutil.refresh_pillar
+vmx-2:
+    True
+vmx-1:
+    True
+```
 
 ### 3. Define template configuration
 
+```jinja
+$ cat /srv/salt/configs/l3vpn.conf 
+groups {
+    replace:
+    L3VPN-SALT {
+        {% if pillar.L3VPN_data %}
+        interfaces {
+        {% for VPN_entry in pillar.L3VPN_data %}
+            {{ VPN_entry.interface_name }} {
+                unit {{ VPN_entry.unit }} {
+                    vlan-id {{ VPN_entry.vlan_id }};
+                    family inet {
+                        address {{ VPN_entry.ip_mask }};
+                    }
+                }
+            }
+        {% endfor %}
+        }
+        routing-instances {
+        {% for VPN_entry in pillar.L3VPN_data %}
+            {{ VPN_entry.customer_id }} {
+                instance-type vrf;
+                vrf-table-label;
+                interface {{ VPN_entry.interface_name }}.{{ VPN_entry.unit }};
+                vrf-target {{ pillar.customers[VPN_entry.customer_id].vrf_target }};
+                protocols {
+                    bgp {
+                        group EBGP-{{ VPN_entry.customer_id }} {
+                            family inet {
+                                unicast {
+                                    prefix-limit {
+                                        maximum {{ VPN_entry.prefix_limit }};
+                                        teardown;
+                                    }
+                                }
+                            }
+                            peer-as {{ pillar.customers[VPN_entry.customer_id].AS }};
+                            as-override;
+                            neighbor {{ VPN_entry.customer_ip }};
+                        }
+                    }
+                }
+            }
+        {% endfor %}
+        }
+        {% endif %}
+    }
+}
+apply-groups L3VPN-SALT;
+```
+
 ### 4. Define state SLS files
+
+```bash
+$ cat /srv/salt/provision_l3vpn.sls 
+Install L3 VPN config:
+  junos.install_config:
+    - name: salt:///configs/l3vpn.conf
+    - replace: True
+    - timeout: 100
+    - diffs_file: /home/eve/l3vpn-{{ grains.id }}.diff
+```
 
 ### 5. Apply the state
 
+```bash
+$ sudo salt vmx* state.apply provision_l3vpn
+vmx-2:
+----------
+          ID: Install L3 VPN config
+    Function: junos.install_config
+        Name: salt:///configs/l3vpn.conf
+      Result: True
+     Comment: 
+     Started: 12:43:47.091335
+    Duration: 1174.689 ms
+     Changes:   
+              ----------
+              message:
+                  Successfully loaded and committed!
+              out:
+                  True
+
+Summary for vmx-2
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time:   1.175 s
+vmx-1:
+----------
+          ID: Install L3 VPN config
+    Function: junos.install_config
+        Name: salt:///configs/l3vpn.conf
+      Result: True
+     Comment: 
+     Started: 12:43:47.061813
+    Duration: 1257.784 ms
+     Changes:   
+              ----------
+              message:
+                  Successfully loaded and committed!
+              out:
+                  True
+
+Summary for vmx-1
+------------
+Succeeded: 1 (changed=1)
+Failed:    0
+------------
+Total states run:     1
+Total run time:   1.258 s
+```
+
 ### 6. Check on the devices
+
+```bash
+$ sudo salt vmx* junos.cli "show configuration | compare rollback 1"
+vmx-2:
+    ----------
+    message:
+        
+        [edit]
+        + groups {
+        +     L3VPN-SALT {
+        +         interfaces {
+        +             ge-0/0/2 {
+        +                 unit 150 {
+        +                     vlan-id 150;
+        +                     family inet {
+        +                         address 10.150.0.1/24;
+        +                     }
+        +                 }
+        +                 unit 250 {
+        +                     vlan-id 250;
+        +                     family inet {
+        +                         address 10.250.0.1/24;
+        +                     }
+        +                 }
+        +             }
+        +         }
+        +         routing-instances {
+        +             Cust_A {
+        +                 instance-type vrf;
+        +                 interface ge-0/0/2.150;
+        +                 vrf-target target:65000:1;
+        +                 vrf-table-label;
+        +                 protocols {
+        +                     bgp {
+        +                         group EBGP-Cust_A {
+        +                             family inet {
+        +                                 unicast {
+        +                                     prefix-limit {
+        +                                         maximum 10;
+        +                                         teardown;
+        +                                     }
+        +                                 }
+        +                             }
+        +                             peer-as 65100;
+        +                             as-override;
+        +                             neighbor 10.150.0.2;
+        +                         }
+        +                     }
+        +                 }
+        +             }
+        +             Cust_B {
+        +                 instance-type vrf;
+        +                 interface ge-0/0/2.250;
+        +                 vrf-target target:65000:2;
+        +                 vrf-table-label;
+        +                 protocols {
+        +                     bgp {
+        +                         group EBGP-Cust_B {
+        +                             family inet {
+        +                                 unicast {
+        +                                     prefix-limit {
+        +                                         maximum 15;
+        +                                         teardown;
+        +                                     }
+        +                                 }
+        +                             }
+        +                             peer-as 65200;
+        +                             as-override;
+        +                             neighbor 10.250.0.2;
+        +                         }
+        +                     }
+        +                 }
+        +             }
+        +         }
+        +     }
+        + }
+        + apply-groups L3VPN-SALT;
+    out:
+        True
+vmx-1:
+    ----------
+    message:
+        
+        [edit]
+        + groups {
+        +     L3VPN-SALT {
+        +         interfaces {
+        +             ge-0/0/2 {
+        +                 unit 100 {
+        +                     vlan-id 100;
+        +                     family inet {
+        +                         address 10.100.0.1/24;
+        +                     }
+        +                 }
+        +                 unit 200 {
+        +                     vlan-id 200;
+        +                     family inet {
+        +                         address 10.200.0.1/24;
+        +                     }
+        +                 }
+        +             }
+        +         }
+        +         routing-instances {
+        +             Cust_A {
+        +                 instance-type vrf;
+        +                 interface ge-0/0/2.100;
+        +                 vrf-target target:65000:1;
+        +                 vrf-table-label;
+        +                 protocols {
+        +                     bgp {
+        +                         group EBGP-Cust_A {
+        +                             family inet {
+        +                                 unicast {
+        +                                     prefix-limit {
+        +                                         maximum 10;
+        +                                         teardown;
+        +                                     }
+        +                                 }
+        +                             }
+        +                             peer-as 65100;
+        +                             as-override;
+        +                             neighbor 10.100.0.2;
+        +                         }
+        +                     }
+        +                 }
+        +             }
+        +             Cust_B {
+        +                 instance-type vrf;
+        +                 interface ge-0/0/2.200;
+        +                 vrf-target target:65000:2;
+        +                 vrf-table-label;
+        +                 protocols {
+        +                     bgp {
+        +                         group EBGP-Cust_B {
+        +                             family inet {
+        +                                 unicast {
+        +                                     prefix-limit {
+        +                                         maximum 15;
+        +                                         teardown;
+        +                                     }
+        +                                 }
+        +                             }
+        +                             peer-as 65200;
+        +                             as-override;
+        +                             neighbor 10.200.0.2;
+        +                         }
+        +                     }
+        +                 }
+        +             }
+        +         }
+        +     }
+        + }
+        + apply-groups L3VPN-SALT;
+    out:
+        True
+```
+
+```bash
+# On salt-minion1 check .diff files
+$ cat /home/eve/l3vpn-vmx-1.diff
+
+[edit]
++ groups {
++     L3VPN-SALT {
++         interfaces {
++             ge-0/0/2 {
++                 unit 100 {
++                     vlan-id 100;
++                     family inet {
++                         address 10.100.0.1/24;
++                     }
++                 }
++                 unit 200 {
++                     vlan-id 200;
++                     family inet {
++                         address 10.200.0.1/24;
++                     }
++                 }
++             }
++         }
++         routing-instances {
++             Cust_A {
++                 instance-type vrf;
++                 interface ge-0/0/2.100;
++                 vrf-target target:65000:1;
++                 vrf-table-label;
++                 protocols {
++                     bgp {
++                         group EBGP-Cust_A {
++                             family inet {
++                                 unicast {
++                                     prefix-limit {
++                                         maximum 10;
++                                         teardown;
++                                     }
++                                 }
++                             }
++                             peer-as 65100;
++                             as-override;
++                             neighbor 10.100.0.2;
++                         }
++                     }
++                 }
++             }
++             Cust_B {
++                 instance-type vrf;
++                 interface ge-0/0/2.200;
++                 vrf-target target:65000:2;
++                 vrf-table-label;
++                 protocols {
++                     bgp {
++                         group EBGP-Cust_B {
++                             family inet {
++                                 unicast {
++                                     prefix-limit {
++                                         maximum 15;
++                                         teardown;
++                                     }
++                                 }
++                             }
++                             peer-as 65200;
++                             as-override;
++                             neighbor 10.200.0.2;
++                         }
++                     }
++                 }
++             }
++         }
++     }
++ }
++ apply-groups L3VPN-SALT;
+```
+
+```bash
+$ cat /home/eve/l3vpn-vmx-2.diff
+
+[edit]
++ groups {
++     L3VPN-SALT {
++         interfaces {
++             ge-0/0/2 {
++                 unit 150 {
++                     vlan-id 150;
++                     family inet {
++                         address 10.150.0.1/24;
++                     }
++                 }
++                 unit 250 {
++                     vlan-id 250;
++                     family inet {
++                         address 10.250.0.1/24;
++                     }
++                 }
++             }
++         }
++         routing-instances {
++             Cust_A {
++                 instance-type vrf;
++                 interface ge-0/0/2.150;
++                 vrf-target target:65000:1;
++                 vrf-table-label;
++                 protocols {
++                     bgp {
++                         group EBGP-Cust_A {
++                             family inet {
++                                 unicast {
++                                     prefix-limit {
++                                         maximum 10;
++                                         teardown;
++                                     }
++                                 }
++                             }
++                             peer-as 65100;
++                             as-override;
++                             neighbor 10.150.0.2;
++                         }
++                     }
++                 }
++             }
++             Cust_B {
++                 instance-type vrf;
++                 interface ge-0/0/2.250;
++                 vrf-target target:65000:2;
++                 vrf-table-label;
++                 protocols {
++                     bgp {
++                         group EBGP-Cust_B {
++                             family inet {
++                                 unicast {
++                                     prefix-limit {
++                                         maximum 15;
++                                         teardown;
++                                     }
++                                 }
++                             }
++                             peer-as 65200;
++                             as-override;
++                             neighbor 10.250.0.2;
++                         }
++                     }
++                 }
++             }
++         }
++     }
++ }
++ apply-groups L3VPN-SALT;
+```
+
+### Test routing table and connectivity
+
+```bash
+brook@vmx-1> show route table Cust_A.inet.0
+
+Cust_A.inet.0: 3 destinations, 3 routes (3 active, 0 holddown, 0 hidden)
++ = Active Route, - = Last Active, * = Both
+
+10.100.0.0/24 		*[Direct/0] 00:06:50
+ 									 > via ge-0/0/2.100
+10.100.0.1/32 		*[Local/0] 00:06:50
+ 										 Local via ge-0/0/2.100
+10.150.0.0/24 		*[BGP/170] 00:06:50, localpref 100, from 192.168.0.2
+ 									   AS path: I, validation-state: unverified
+ 										 to 10.0.0.222 via ge-0/0/0.0, Push 16
+ 									 > to 10.0.1.222 via ge-0/0/1.0, Push 16
+```
+
+The route to the remote network is there. You can also check to see if a ping between remote Customer-A instances works as it should. The VR-A here is a virtual router instance created manually on the vmx-1 just for testing purposes (emulating the Customer-A's CE device):
+
+```bash
+brook@vmx-1> ping 10.150.0.2 routing-instance VR-A source 10.100.0.2 rapid
+PING 10.150.0.2 (10.150.0.2): 56 data bytes
+!!!!!
+--- 10.150.0.2 ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max/stddev = 2.156/2.371/2.679/0.173 ms
+```
