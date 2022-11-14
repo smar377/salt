@@ -404,7 +404,7 @@ vmx-2:
 
 ### 3. Define template configuration
 
-```bash
+```jinja
 $ cat /srv/salt/configs/infra_config.conf 
 system {
   replace: name-server {
