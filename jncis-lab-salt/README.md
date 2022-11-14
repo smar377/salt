@@ -420,7 +420,7 @@ system {
 }
 ```
 
-```bash
+```jinja
 $ cat /srv/salt/configs/interfaces.conf 
 interfaces {
 {%- for iface in pillar.interfaces %}
