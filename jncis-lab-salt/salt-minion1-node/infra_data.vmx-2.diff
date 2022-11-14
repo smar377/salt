@@ -1,0 +1,8 @@
+[edit system]
++  name-server {
++      192.168.0.253;
++      192.168.0.254;
++  }
+[edit system ntp]
++    server 192.168.0.250;
++    server 192.168.0.251;
