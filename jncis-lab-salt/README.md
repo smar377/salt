@@ -1,7 +1,7 @@
 ## Intro
 
-This lab was developed while studying ["DAY ONE: AUTOMATING JUNOS
-WITH SALT" by Juniper Networks](https://www.juniper.net/documentation/en_US/day-one-books/DO_Automating_SALT.pdf)
+This lab was developed while studying e-book [DAY ONE: AUTOMATING JUNOS
+WITH SALT by Juniper Networks](https://www.juniper.net/documentation/en_US/day-one-books/DO_Automating_SALT.pdf)
 
 ## Virtualization & Tooling
 
