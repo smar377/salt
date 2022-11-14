@@ -368,7 +368,9 @@ interfaces:
  - name: ge-0/0/9
    unit: 0
    address: 10.0.9.111/24
-    
+```
+
+```bash
 $ cat /srv/pillar/interfaces-vmx2.sls 
 interfaces:
  - name: ge-0/0/8
@@ -669,6 +671,7 @@ $ cat infra_data.vmx-2.diff
 ```
 
 ```bash
+# Check from salt-master VM utilizing the junos.cli module
 $ sudo salt vmx* junos.cli "show configuration | compare rollback 1"
 vmx-2:
     ----------
@@ -986,6 +989,7 @@ Total run time:   1.258 s
 ### 6. Check on the devices
 
 ```bash
+# Check from salt-master VM utilizing the junos.cli module
 $ sudo salt vmx* junos.cli "show configuration | compare rollback 1"
 vmx-2:
     ----------
