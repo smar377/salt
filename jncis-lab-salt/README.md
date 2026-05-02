@@ -1,7 +1,20 @@
-## Intro
+This lab was developed while studying the [DAY ONE: AUTOMATING JUNOS WITH SALT](https://www.juniper.net/documentation/en_US/day-one-books/DO_Automating_SALT.pdf) e-book by Juniper Networks.
 
-This lab was developed while studying e-book [DAY ONE: AUTOMATING JUNOS
-WITH SALT by Juniper Networks](https://www.juniper.net/documentation/en_US/day-one-books/DO_Automating_SALT.pdf)
+## Table of Contents
+
+- [Virtualization & Tooling](#virtualization--tooling)
+- [Inventory](#inventory)
+- [Junos Devices Preparation](#junos-devices-preparation)
+- [Salt Execution Modules and Functions](#salt-execution-modules-and-functions)
+- [Salt Architecture for Junos](#salt-architecture-for-junos)
+  - [salt-master node setup](#initialization-of-salt-master-node)
+  - [salt-minion1 node setup](#initialization-of-salt-minion1-node)
+- [Verify Connectivity](#verify-that-vmx-routers-and-salt-minion-proxy-processes-have-joined-the-salt-master)
+- [Check Connectivity](#check-connectivity-between-vmx-routers-and-salt-master)
+- [Check vMX Interfaces](#check-vmx-interfaces)
+- [Useful Salt/Junos Commands](#other-useful-salt-commands-leveraging-various-junos-pyez-modules)
+- [Case Study #1 — Infra & Interface Provisioning](#case-study-1)
+- [Case Study #2 — L3VPN Provisioning](#case-study-2)
 
 ## Virtualization & Tooling
 
@@ -326,17 +339,26 @@ vmx-1:
 
 ## Other useful Salt commands leveraging various Junos PyEZ modules
 
+**Device info & diagnostics**
 ```bash
-$ sudo salt vmx* junos.rpc get-interface-information interface-name=ge-0/0/0 terse=True --out=json
-$ sudo salt vmx* junos.ping "10.254.0.1" count=2
 $ sudo salt vmx* junos.facts
+$ sudo salt vmx* junos.ping "10.254.0.1" count=2
+$ sudo salt vmx* junos.rpc get-interface-information interface-name=ge-0/0/0 terse=True --out=json
+```
+
+**Config management** (lock → load → diff → check → commit → unlock workflow)
+```bash
 $ sudo salt vmx* junos.lock
 $ sudo salt vmx* junos.load 'salt://myconfig.set' replace='True'
 $ sudo salt vmx* junos.diff
-$ sudo salt vmx* junos.commit
 $ sudo salt vmx* junos.commit_check
+$ sudo salt vmx* junos.commit
 $ sudo salt vmx* junos.unlock
 $ sudo salt vmx* junos.install_config 'salt://myconfig.set'
+```
+
+**File & OS operations**
+```bash
 $ sudo salt vmx* junos.file_copy /home/eve/hello.slax /var/db/scripts/op
 $ sudo salt vmx* junos.install_os salt:///junos-openconfig-x86-32-0.0.0.9.tgz
 ```
@@ -650,30 +672,7 @@ vmx-1:
         True
 ```
 
-```bash
-# On salt-minion1 VM we check the .diff files
-$ cat infra_data.vmx-1.diff 
-
-[edit system]
-+  name-server {
-+      192.168.0.253;
-+      192.168.0.254;
-+  }
-[edit system ntp]
-+    server 192.168.0.250;
-+    server 192.168.0.251;
-
-$ cat infra_data.vmx-2.diff 
-
-[edit system]
-+  name-server {
-+      192.168.0.253;
-+      192.168.0.254;
-+  }
-[edit system ntp]
-+    server 192.168.0.250;
-+    server 192.168.0.251;
-```
+> The resulting diff files on `salt-minion1` (`infra_data.vmx-1.diff`, `infra_data.vmx-2.diff`) contain the same changes shown above.
 
 ```bash
 # Check from salt-master VM utilizing the junos.cli module
@@ -722,44 +721,7 @@ vmx-1:
         True
 ```
 
-```bash
-# On salt-minion1 VM we check the .diff files
-$ cat interfaces-vmx-1.diff 
-
-[edit interfaces]
-+   ge-0/0/8 {
-+       unit 0 {
-+           family inet {
-+               address 10.0.8.111/24;
-+           }
-+       }
-+   }
-+   ge-0/0/9 {
-+       unit 0 {
-+           family inet {
-+               address 10.0.9.111/24;
-+           }
-+       }
-+   }
-
-$ cat interfaces-vmx-2.diff 
-
-[edit interfaces]
-+   ge-0/0/8 {
-+       unit 0 {
-+           family inet {
-+               address 10.0.8.222/24;
-+           }
-+       }
-+   }
-+   ge-0/0/9 {
-+       unit 0 {
-+           family inet {
-+               address 10.0.9.222/24;
-+           }
-+       }
-+   }
-```
+> The resulting diff files on `salt-minion1` (`interfaces-vmx-1.diff`, `interfaces-vmx-2.diff`) contain the same interface changes shown above.
 
 ## Case Study #2
 
@@ -1150,157 +1112,7 @@ vmx-1:
         True
 ```
 
-```bash
-# On salt-minion1 check .diff files
-$ cat /home/eve/l3vpn-vmx-1.diff
-
-[edit]
-+ groups {
-+     L3VPN-SALT {
-+         interfaces {
-+             ge-0/0/2 {
-+                 unit 100 {
-+                     vlan-id 100;
-+                     family inet {
-+                         address 10.100.0.1/24;
-+                     }
-+                 }
-+                 unit 200 {
-+                     vlan-id 200;
-+                     family inet {
-+                         address 10.200.0.1/24;
-+                     }
-+                 }
-+             }
-+         }
-+         routing-instances {
-+             Cust_A {
-+                 instance-type vrf;
-+                 interface ge-0/0/2.100;
-+                 vrf-target target:65000:1;
-+                 vrf-table-label;
-+                 protocols {
-+                     bgp {
-+                         group EBGP-Cust_A {
-+                             family inet {
-+                                 unicast {
-+                                     prefix-limit {
-+                                         maximum 10;
-+                                         teardown;
-+                                     }
-+                                 }
-+                             }
-+                             peer-as 65100;
-+                             as-override;
-+                             neighbor 10.100.0.2;
-+                         }
-+                     }
-+                 }
-+             }
-+             Cust_B {
-+                 instance-type vrf;
-+                 interface ge-0/0/2.200;
-+                 vrf-target target:65000:2;
-+                 vrf-table-label;
-+                 protocols {
-+                     bgp {
-+                         group EBGP-Cust_B {
-+                             family inet {
-+                                 unicast {
-+                                     prefix-limit {
-+                                         maximum 15;
-+                                         teardown;
-+                                     }
-+                                 }
-+                             }
-+                             peer-as 65200;
-+                             as-override;
-+                             neighbor 10.200.0.2;
-+                         }
-+                     }
-+                 }
-+             }
-+         }
-+     }
-+ }
-+ apply-groups L3VPN-SALT;
-```
-
-```bash
-$ cat /home/eve/l3vpn-vmx-2.diff
-
-[edit]
-+ groups {
-+     L3VPN-SALT {
-+         interfaces {
-+             ge-0/0/2 {
-+                 unit 150 {
-+                     vlan-id 150;
-+                     family inet {
-+                         address 10.150.0.1/24;
-+                     }
-+                 }
-+                 unit 250 {
-+                     vlan-id 250;
-+                     family inet {
-+                         address 10.250.0.1/24;
-+                     }
-+                 }
-+             }
-+         }
-+         routing-instances {
-+             Cust_A {
-+                 instance-type vrf;
-+                 interface ge-0/0/2.150;
-+                 vrf-target target:65000:1;
-+                 vrf-table-label;
-+                 protocols {
-+                     bgp {
-+                         group EBGP-Cust_A {
-+                             family inet {
-+                                 unicast {
-+                                     prefix-limit {
-+                                         maximum 10;
-+                                         teardown;
-+                                     }
-+                                 }
-+                             }
-+                             peer-as 65100;
-+                             as-override;
-+                             neighbor 10.150.0.2;
-+                         }
-+                     }
-+                 }
-+             }
-+             Cust_B {
-+                 instance-type vrf;
-+                 interface ge-0/0/2.250;
-+                 vrf-target target:65000:2;
-+                 vrf-table-label;
-+                 protocols {
-+                     bgp {
-+                         group EBGP-Cust_B {
-+                             family inet {
-+                                 unicast {
-+                                     prefix-limit {
-+                                         maximum 15;
-+                                         teardown;
-+                                     }
-+                                 }
-+                             }
-+                             peer-as 65200;
-+                             as-override;
-+                             neighbor 10.250.0.2;
-+                         }
-+                     }
-+                 }
-+             }
-+         }
-+     }
-+ }
-+ apply-groups L3VPN-SALT;
-```
-
+> The resulting diff files on `salt-minion1` (`l3vpn-vmx-1.diff`, `l3vpn-vmx-2.diff`) contain the same L3VPN changes shown above.
 
 *Important:* In case we try to apply the same state again we will see that Salt detects that **NO** change on the devices is needed, and does **NOT** perform a commit. Salt will try to configure the state again, only when a change has happened on the data given:
 
